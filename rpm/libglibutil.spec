@@ -1,13 +1,19 @@
 Name: libglibutil
 
-Version: 1.0.55
+Version: 1.0.66
 Release: 0
 Summary: Library of glib utilities
 License: BSD
-URL: https://git.sailfishos.org/mer-core/libglibutil
+URL: https://github.com/sailfishos/libglibutil
 Source: %{name}-%{version}.tar.bz2
 
+BuildRequires: pkgconfig
 BuildRequires: pkgconfig(glib-2.0)
+
+# license macro requires rpm >= 4.11
+BuildRequires: pkgconfig(rpm)
+%define license_support %(pkg-config --exists 'rpm >= 4.11'; echo $?)
+
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 
@@ -17,7 +23,6 @@ Provides glib utility functions and macros
 %package devel
 Summary: Development library for %{name}
 Requires: %{name} = %{version}
-Requires: pkgconfig
 
 %description devel
 This package contains the development library for %{name}.
@@ -42,6 +47,9 @@ make -C test test
 %files
 %defattr(-,root,root,-)
 %{_libdir}/%{name}.so.*
+%if %{license_support} == 0
+%license LICENSE
+%endif
 
 %files devel
 %defattr(-,root,root,-)

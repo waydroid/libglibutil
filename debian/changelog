@@ -1,3 +1,67 @@
+libglibutil (1.0.66) unstable; urgency=low
+
+  * Bumped debhelper compat level to 7
+
+ -- Slava Monich <slava.monich@jolla.com>  Fri, 15 Jul 2022 03:02:33 +0300
+
+libglibutil (1.0.65) unstable; urgency=low
+
+  * Fixed a Musl compatibility issue
+
+ -- Slava Monich <slava.monich@jolla.com>  Thu, 16 Jun 2022 02:12:22 +0300
+
+libglibutil (1.0.64) unstable; urgency=low
+
+  * Resolved a mysterious parallel build issue
+
+ -- Slava Monich <slava.monich@jolla.com>  Tue, 17 May 2022 03:56:50 +0300
+
+libglibutil (1.0.63) unstable; urgency=low
+
+  * Added gutil_bytes_has_prefix()
+  * Added gutil_bytes_has_suffix()
+
+ -- Slava Monich <slava.monich@jolla.com>  Sat, 23 Apr 2022 21:24:25 +0300
+
+libglibutil (1.0.62) unstable; urgency=low
+
+  * Added gutil_strlen0()
+  * Added gutil_strv_find_last()
+  * Added gutil_strv_remove_dups()
+
+ -- Slava Monich <slava.monich@jolla.com>  Sun, 13 Mar 2022 21:59:26 +0200
+
+libglibutil (1.0.61) unstable; urgency=low
+
+  * Added gutil_strv_remove()
+
+ -- Slava Monich <slava.monich@jolla.com>  Thu, 25 Nov 2021 18:31:18 +0200
+
+libglibutil (1.0.60) unstable; urgency=low
+
+  * Housekeeping release
+
+ -- Slava Monich <slava.monich@jolla.com>  Mon, 22 Nov 2021 23:37:14 +0200
+
+libglibutil (1.0.58) unstable; urgency=low
+
+  * Don't check upper bound when setting log level from the envvironment
+
+ -- Slava Monich <slava.monich@jolla.com>  Wed, 17 Nov 2021 13:17:45 +0200
+
+libglibutil (1.0.57) unstable; urgency=low
+
+  * Fixed unit tests for older 32-bit systems
+
+ -- Slava Monich <slava.monich@jolla.com>  Mon, 08 Nov 2021 02:28:37 +0200
+
+libglibutil (1.0.56) unstable; urgency=low
+
+  * Added gutil_parse_int64()
+  * Added gutil_parse_uint64()
+
+ -- Slava Monich <slava.monich@jolla.com>  Sun, 03 Oct 2021 20:18:15 +0300
+
 libglibutil (1.0.55) unstable; urgency=low
 
   * Added gutil_log_dump()
