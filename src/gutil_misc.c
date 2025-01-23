@@ -1,8 +1,8 @@
 /*
+ * Copyright (C) 2016-2024 Slava Monich <slava@monich.com>
  * Copyright (C) 2016-2022 Jolla Ltd.
- * Copyright (C) 2016-2022 Slava Monich <slava.monich@jolla.com>
  *
- * You may use this file under the terms of BSD license as follows:
+ * You may use this file under the terms of the BSD license as follows:
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,6 +38,10 @@
 #include <errno.h>
 #include <limits.h>
 
+#if __GNUC__ >= 4
+#pragma GCC visibility push(default)
+#endif
+
 void
 gutil_disconnect_handlers(
     gpointer instance,
@@ -54,6 +58,53 @@ gutil_disconnect_handlers(
             }
         }
     }
+}
+
+void*
+gutil_object_ref(
+    void* object) /* Since 1.0.71 */
+{
+    /* Just a NULL-tolerant version of g_object_ref() */
+    if (object) {
+        g_object_ref(object);
+    }
+    return object;
+}
+
+void
+gutil_object_unref(
+    void* object) /* Since 1.0.71 */
+{
+    /* Just a NULL-tolerant version of g_object_unref */
+    if (object) {
+        g_object_unref(object);
+    }
+}
+
+gboolean
+gutil_source_remove(
+    guint id) /* Since 1.0.78 */
+{
+    /* Zero-tolerant version of g_source_remove */
+    if (id) {
+        g_source_remove(id);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+gboolean
+gutil_source_clear(
+    guint* id) /* Since 1.0.78 */
+{
+    /* Yet another zero-tolerant version of g_source_remove */
+    if (id && *id) {
+        g_source_remove(*id);
+        *id = 0;
+        return TRUE;
+    }
+    return FALSE;
+
 }
 
 void*
@@ -88,6 +139,39 @@ gutil_hex2bin(
         return data;
     }
     return NULL;
+}
+
+char*
+gutil_bin2hex(
+    const void* data,
+    gsize len,
+    gboolean upper_case) /* Since 1.0.71 */
+{
+    static const char hex[] = "0123456789abcdef";
+    static const char HEX[] = "0123456789ABCDEF";
+    const char* map = upper_case ? HEX : hex;
+    const guchar* ptr = data;
+    const guchar* end = ptr + len;
+    char* out = g_malloc(2 * len + 1);
+    char* dest = out;
+
+    while (ptr < end) {
+        const guchar b = *ptr++;
+
+        *dest++ = map[(b >> 4) & 0xf];
+        *dest++ = map[b & 0xf];
+    }
+
+    *dest = 0;
+    return out;
+}
+
+char*
+gutil_data2hex(
+    const GUtilData* data,
+    gboolean upper_case) /* Since 1.0.71 */
+{
+    return data ? gutil_bin2hex(data->bytes, data->size, upper_case) : NULL;
 }
 
 GBytes*
@@ -136,6 +220,7 @@ gutil_hexdump(
         }
         if (i < len) {
             const guchar b = bytes[i];
+
             *ptr++ = hex[(b >> 4) & 0xf];
             *ptr++ = hex[b & 0xf];
         } else {
@@ -169,7 +254,8 @@ gutil_strstrip(
 
     if (g_ascii_isspace(str[0]) || g_ascii_isspace(str[len - 1])) {
         /* Need to modify the original string */
-        return (*tmp = g_strstrip(gutil_memdup(str, len + 1)));
+        *tmp = gutil_memdup(str, len + 1);
+        return g_strstrip(*tmp);
     } else {
         /* The original string is fine as is */
         return str;
@@ -294,7 +380,7 @@ gutil_data_equal(
 const GUtilData*
 gutil_data_from_string(
     GUtilData* data,
-    const char* str)
+    const char* str) /* Since 1.0.31 */
 {
     if (data) {
         if (str) {
@@ -311,7 +397,7 @@ gutil_data_from_string(
 const GUtilData*
 gutil_data_from_bytes(
     GUtilData* data,
-    GBytes* bytes)
+    GBytes* bytes) /* Since 1.0.31 */
 {
     if (data) {
         if (bytes) {
@@ -322,6 +408,56 @@ gutil_data_from_bytes(
         }
     }
     return data;
+}
+
+GUtilData*
+gutil_data_new(
+    const void* bytes,
+    guint len) /* Since 1.0.72 */
+{
+    /*
+     * The whole thing is allocated from a single memory block and
+     * has to be freed with a single g_free()
+     */
+    const gsize total = len + sizeof(GUtilData);
+    GUtilData* data = g_malloc(total);
+
+    if (bytes) {
+        void* contents = (void*)(data + 1);
+
+        data->bytes = contents;
+        data->size = len;
+        memcpy(contents, bytes, len);
+    } else {
+        memset(data, 0, sizeof(*data));
+    }
+    return data;
+}
+
+GUtilData*
+gutil_data_copy(
+    const GUtilData* data) /* Since 1.0.72 */
+{
+    /*
+     * The whole thing is allocated from a single memory block and
+     * has to be freed with a single g_free()
+     */
+    return data ? gutil_data_new(data->bytes, data->size) : NULL;
+}
+
+GVariant*
+gutil_data_copy_as_variant(
+    const GUtilData* data) /* Since 1.0.74 */
+{
+    /*
+     * Return a floating reference to a new array GVariant instance
+     * or NULL if the input is NULL.
+     */
+    return !data ? NULL : data->size ?
+        g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE,
+             data->bytes, data->size, 1) :
+        g_variant_new_from_data(G_VARIANT_TYPE_BYTESTRING,
+             NULL, 0, TRUE, NULL, NULL);
 }
 
 gboolean
@@ -562,7 +698,7 @@ gsize
 gutil_ptrv_length(
     const void* ptrv) /* Since 1.0.50 */
 {
-    if (G_LIKELY(ptrv)) {
+    if (ptrv) {
         gsize len = 0;
         const gconstpointer* ptr = ptrv;
 
@@ -571,6 +707,13 @@ gutil_ptrv_length(
     } else {
         return 0;
     }
+}
+
+gboolean
+gutil_ptrv_is_empty(
+    const void* ptrv) /* Since 1.0.71 */
+{
+    return !ptrv || !((gconstpointer*)ptrv)[0];
 }
 
 /* Frees NULL-terminated array of pointers and whatever they're pointing to. */

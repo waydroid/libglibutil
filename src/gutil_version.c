@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2018-2023 Slava Monich <slava@monich.com>
- * Copyright (C) 2018 Jolla Ltd.
+ * Copyright (C) 2023 Slava Monich <slava@monich.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -30,45 +29,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "test_common.h"
+#include "gutil_version.h"
 
-#include <gutil_log.h>
-
-typedef GObject TestObject;
-typedef GObjectClass TestObjectClass;
-
-G_DEFINE_TYPE(TestObject, test_object, G_TYPE_OBJECT)
-
-gint test_object_count = 0;
-
-static
-void
-test_object_init(
-    TestObject* self)
-{
-    g_atomic_int_inc(&test_object_count);
-}
-
-#ifdef __clang__
-__attribute__((no_sanitize("cfi")))
+#if __GNUC__ >= 4
+#pragma GCC visibility push(default)
 #endif
-static
-void
-test_object_finalize(
-    GObject* object)
-{
-    GASSERT(test_object_count > 0);
-    g_atomic_int_add(&test_object_count, -1);
-    G_OBJECT_CLASS(test_object_parent_class)->finalize(object);
-}
 
-static
-void
-test_object_class_init(
-    TestObjectClass* klass)
-{
-    klass->finalize = test_object_finalize;
-}
+const guint gutil_version_major = GUTIL_VERSION_MAJOR;
+const guint gutil_version_minor = GUTIL_VERSION_MINOR;
+const guint gutil_version_micro = GUTIL_VERSION_MICRO;
 
 /*
  * Local Variables:

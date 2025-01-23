@@ -15,47 +15,6 @@ PKGS = glib-2.0 gobject-2.0
 all: debug release pkgconfig
 
 #
-# Library version
-#
-
-VERSION_MAJOR = 1
-VERSION_MINOR = 0
-VERSION_RELEASE = 66
-
-# Version for pkg-config
-PCVERSION = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_RELEASE)
-
-#
-# Library name
-#
-
-NAME = glibutil
-LIB_NAME = lib$(NAME)
-LIB_DEV_SYMLINK = $(LIB_NAME).so
-LIB_SYMLINK1 = $(LIB_DEV_SYMLINK).$(VERSION_MAJOR)
-LIB_SYMLINK2 = $(LIB_SYMLINK1).$(VERSION_MINOR)
-LIB_SONAME = $(LIB_SYMLINK1)
-LIB = $(LIB_SONAME).$(VERSION_MINOR).$(VERSION_RELEASE)
-STATIC_LIB = $(LIB_NAME).a
-
-#
-# Sources
-#
-
-SRC = \
-  gutil_history.c \
-  gutil_idlepool.c \
-  gutil_idlequeue.c \
-  gutil_inotify.c \
-  gutil_intarray.c \
-  gutil_ints.c \
-  gutil_log.c \
-  gutil_misc.c \
-  gutil_ring.c \
-  gutil_strv.c \
-  gutil_timenotify.c
-
-#
 # Directories
 #
 
@@ -67,19 +26,71 @@ RELEASE_BUILD_DIR = $(BUILD_DIR)/release
 COVERAGE_BUILD_DIR = $(BUILD_DIR)/coverage
 
 #
+# Library version
+#
+
+VERSION_FILE = $(INCLUDE_DIR)/gutil_version.h
+get_version = $(shell grep -E '^ *\#define +GUTIL_VERSION_$1 +[0-9]+$$' $(VERSION_FILE) | sed 's/  */ /g' | cut -d ' ' -f 3)
+
+VERSION_MAJOR := $(call get_version,MAJOR)
+VERSION_MINOR := $(call get_version,MINOR)
+VERSION_MICRO := $(call get_version,MICRO)
+
+# Version for pkg-config
+PCVERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_MICRO)
+
+#
+# Library name
+#
+
+NAME = glibutil
+LIB_NAME = lib$(NAME)
+LIB_DEV_SYMLINK = $(LIB_NAME).so
+LIB_SYMLINK1 = $(LIB_DEV_SYMLINK).$(VERSION_MAJOR)
+LIB_SYMLINK2 = $(LIB_SYMLINK1).$(VERSION_MINOR)
+LIB_SONAME = $(LIB_SYMLINK1)
+LIB = $(LIB_SONAME).$(VERSION_MINOR).$(VERSION_MICRO)
+STATIC_LIB = $(LIB_NAME).a
+
+#
+# Sources
+#
+
+SRC = \
+  gutil_datapack.c \
+  gutil_history.c \
+  gutil_idlepool.c \
+  gutil_idlequeue.c \
+  gutil_inotify.c \
+  gutil_intarray.c \
+  gutil_ints.c \
+  gutil_log.c \
+  gutil_misc.c \
+  gutil_ring.c \
+  gutil_strv.c \
+  gutil_timenotify.c \
+  gutil_objv.c \
+  gutil_version.c \
+  gutil_weakref.c
+
+#
 # Tools and flags
 #
 
+PKG_CONFIG ?= pkg-config
 CC ?= $(CROSS_COMPILE)gcc
 STRIP ?= strip
 LD = $(CC)
-WARNINGS = -Wall
+WARNINGS ?= -Wall -Wsign-compare
 INCLUDES = -I$(INCLUDE_DIR)
 BASE_FLAGS = -fPIC
 FULL_CFLAGS = $(BASE_FLAGS) $(CFLAGS) $(DEFINES) $(WARNINGS) $(INCLUDES) \
-  -MMD -MP $(shell pkg-config --cflags $(PKGS))
+  -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32 \
+  -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_MAX_ALLOWED \
+  -MMD -MP $(shell $(PKG_CONFIG) --cflags $(PKGS))
 FULL_LDFLAGS = $(BASE_FLAGS) $(LDFLAGS) -shared -Wl,-soname,$(LIB_SONAME) \
-  $(shell pkg-config --libs $(PKGS))
+  -Wl,--version-script=$(LIB_NAME).ver
+LIBS := $(shell $(PKG_CONFIG) --libs $(PKGS))
 DEBUG_FLAGS = -g
 RELEASE_FLAGS =
 COVERAGE_FLAGS = -g
@@ -93,7 +104,7 @@ DEBUG_LDFLAGS = $(FULL_LDFLAGS) $(DEBUG_FLAGS)
 RELEASE_LDFLAGS = $(FULL_LDFLAGS) $(RELEASE_FLAGS)
 DEBUG_CFLAGS = $(FULL_CFLAGS) $(DEBUG_FLAGS) -DDEBUG
 RELEASE_CFLAGS = $(FULL_CFLAGS) $(RELEASE_FLAGS) -O2
-COVERAGE_CFLAGS = $(FULL_CFLAGS) $(COVERAGE_FLAGS) --coverage
+COVERAGE_CFLAGS = $(FULL_CFLAGS) $(COVERAGE_FLAGS) -O0 --coverage
 
 #
 # Files
@@ -152,7 +163,7 @@ print_coverage_lib:
 	@echo $(COVERAGE_STATIC_LIB)
 
 clean:
-	make -C test clean
+	$(MAKE) -C test clean
 	rm -fr test/coverage/results test/coverage/*.gcov
 	rm -f *~ $(SRC_DIR)/*~ $(INCLUDE_DIR)/*~
 	rm -fr $(BUILD_DIR) RPMS installroot
@@ -162,7 +173,7 @@ clean:
 	rm -fr debian/*.install
 
 test:
-	make -C test test
+	$(MAKE) -C test test
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -186,10 +197,10 @@ $(COVERAGE_BUILD_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CC) -c $(COVERAGE_CFLAGS) -MT"$@" -MF"$(@:%.o=%.d)" $< -o $@
 
 $(DEBUG_LIB): $(DEBUG_OBJS)
-	$(LD) $(DEBUG_OBJS) $(DEBUG_LDFLAGS) -o $@
+	$(LD) $(DEBUG_OBJS) $(DEBUG_LDFLAGS) -o $@ $(LIBS)
 
 $(RELEASE_LIB): $(RELEASE_OBJS)
-	$(LD) $(RELEASE_OBJS) $(RELEASE_LDFLAGS) -o $@
+	$(LD) $(RELEASE_OBJS) $(RELEASE_LDFLAGS) -o $@ $(LIBS)
 ifeq ($(KEEP_SYMBOLS),0)
 	$(STRIP) $@
 endif

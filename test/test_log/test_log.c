@@ -1,6 +1,6 @@
 /*
+ * Copyright (C) 2017-2023 Slava Monich <slava@monich.com>
  * Copyright (C) 2017-2022 Jolla Ltd.
- * Copyright (C) 2017-2022 Slava Monich <slava.monich@jolla.com>
  *
  * You may use this file under the terms of BSD license as follows:
  *
@@ -157,6 +157,7 @@ test_log_file(
     FILE* out = fopencookie(buf, "w", funcs);
     FILE* default_stdout = stdout;
     const int level = gutil_log_default.level;
+    gboolean use_timestamp;
     GLogProc2 log_proc;
 
     g_assert(out);
@@ -212,6 +213,41 @@ test_log_file(
     GDEBUG("%s", buf->str);
     g_assert_cmpstr(buf->str, == ,"Test\n");
     g_string_set_size(buf, 0);
+
+    /* Timestamp prefix */
+    use_timestamp = gutil_log_timestamp;
+    gutil_log_timestamp = TRUE;
+    stdout = out;
+    gutil_log_set_timestamp_format("timestamp1 ");
+    gutil_log_set_timestamp_format("timestamp1 ");
+    gutil_log(NULL, GLOG_LEVEL_ALWAYS, "test1");
+    stdout = default_stdout;
+    g_assert(fflush(out) == 0);
+    GDEBUG("%s", buf->str);
+    g_assert_cmpstr(buf->str, == ,"timestamp1 test1\n");
+    g_string_set_size(buf, 0);
+
+    stdout = out;
+    gutil_log_set_timestamp_format("timestamp2 ");
+    gutil_log(NULL, GLOG_LEVEL_ALWAYS, "test2");
+    stdout = default_stdout;
+    g_assert(fflush(out) == 0);
+    GDEBUG("%s", buf->str);
+    g_assert_cmpstr(buf->str, == ,"timestamp2 test2\n");
+    g_string_set_size(buf, 0);
+
+    stdout = out;
+    gutil_log_set_timestamp_format("");
+    gutil_log(NULL, GLOG_LEVEL_ALWAYS, "test");
+    stdout = default_stdout;
+    g_assert(fflush(out) == 0);
+    GDEBUG("%s", buf->str);
+    g_assert_cmpstr(buf->str, == ,"test\n");
+    g_string_set_size(buf, 0);
+
+    gutil_log_set_timestamp_format(NULL);
+    gutil_log_set_timestamp_format(NULL);
+    gutil_log_timestamp = use_timestamp;
 
     /* Forward output to test_log_drop */
     log_proc = gutil_log_default.log_proc;
@@ -306,33 +342,50 @@ test_log_dump(
     void)
 {
     static const guint8 short_data[] = { 0x01, 0x02, 0x03, 0x04 };
+    static const char short_data_dump[] =
+        "  0000: 01 02 03 04                                         ....\n";
     static const guint8 long_data[] = {
         0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
         0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
         0x00
     };
-
-    const GLogProc fn = gutil_log_func;
-    test_log_buf = g_string_new(NULL);
-    gutil_log_func = test_log_fn;
-
-    gutil_log_dump(&gutil_log_default, GLOG_LEVEL_NONE, NULL,
-        short_data, sizeof(short_data));
-    g_assert_cmpuint(test_log_buf->len, == ,0);
-
-    gutil_log_dump(&gutil_log_default, GLOG_LEVEL_ALWAYS, "  ",
-        short_data, sizeof(short_data));
-    g_assert_cmpstr(test_log_buf->str, == ,
-        "  0000: 01 02 03 04                                         ....\n");
-
-    g_string_set_size(test_log_buf, 0);
-    gutil_log_dump(&gutil_log_default, GLOG_LEVEL_ALWAYS, NULL,
-        long_data, sizeof(long_data));
-    g_assert_cmpstr(test_log_buf->str, == ,
+    static const char long_data_dump[] =
         "0000: 30 31 32 33 34 35 36 37  38 39 3a 3b 3c 3d 3e 3f    "
         "01234567 89:;<=>?\n"
         "0010: 00                                                  "
-        ".\n");
+        ".\n";
+
+    const GLogProc fn = gutil_log_func;
+    const GLogModule* log = &gutil_log_default;
+    GBytes* bytes;
+
+    test_log_buf = g_string_new(NULL);
+    gutil_log_func = test_log_fn;
+
+    gutil_log_dump_bytes(log, GLOG_LEVEL_NONE, "  ", NULL);
+    gutil_log_dump(log,GLOG_LEVEL_NONE,"  ",TEST_ARRAY_AND_SIZE(short_data));
+    g_assert_cmpuint(test_log_buf->len, == ,0);
+
+    gutil_log_dump(log,GLOG_LEVEL_ALWAYS,"  ",TEST_ARRAY_AND_SIZE(short_data));
+    g_assert_cmpstr(test_log_buf->str, == ,short_data_dump);
+
+    g_string_set_size(test_log_buf, 0);
+    bytes = g_bytes_new_static(TEST_ARRAY_AND_SIZE(short_data));
+    gutil_log_dump_bytes(log, GLOG_LEVEL_NONE, "  ", bytes);
+    g_assert_cmpuint(test_log_buf->len, == ,0);
+    gutil_log_dump_bytes(log, GLOG_LEVEL_ALWAYS, "  ", bytes);
+    g_assert_cmpstr(test_log_buf->str, == ,short_data_dump);
+    g_bytes_unref(bytes);
+
+    g_string_set_size(test_log_buf, 0);
+    gutil_log_dump(log,GLOG_LEVEL_ALWAYS,NULL,TEST_ARRAY_AND_SIZE(long_data));
+    g_assert_cmpstr(test_log_buf->str, == ,long_data_dump);
+
+    g_string_set_size(test_log_buf, 0);
+    bytes = g_bytes_new_static(TEST_ARRAY_AND_SIZE(long_data));
+    gutil_log_dump_bytes(log, GLOG_LEVEL_ALWAYS, NULL, bytes);
+    g_assert_cmpstr(test_log_buf->str, == ,long_data_dump);
+    g_bytes_unref(bytes);
 
     g_string_free(test_log_buf, TRUE);
     test_log_buf = NULL;

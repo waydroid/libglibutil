@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2014-2021 Jolla Ltd.
- * Copyright (C) 2014-2021 Slava Monich <slava.monich@jolla.com>
+ * Copyright (C) 2014-2023 Slava Monich <slava@monich.com>
+ * Copyright (C) 2014-2022 Jolla Ltd.
  *
  * You may use this file under the terms of BSD license as follows:
  *
@@ -139,6 +139,12 @@ gutil_logv(
     const char* format,
     va_list va);
 
+/* Check if logging is enabled for the specified log level */
+gboolean
+gutil_log_enabled(
+    const GLogModule* module,
+    int level);
+
 void
 gutil_log_dump(
     const GLogModule* module,
@@ -147,11 +153,16 @@ gutil_log_dump(
     const void* data,
     gsize size); /* Since 1.0.55 */
 
-/* Check if logging is enabled for the specified log level */
-gboolean
-gutil_log_enabled(
+void
+gutil_log_dump_bytes(
     const GLogModule* module,
-    int level);
+    int level,
+    const char* prefix,
+    GBytes* bytes); /* Since 1.0.67 */
+
+void
+gutil_log_set_timestamp_format(
+    const char* f /* see strftime(3) */ ); /* Since 1.0.73 */
 
 /* Known log types */
 extern const char GLOG_TYPE_STDOUT[];
@@ -328,10 +339,13 @@ gutil_log_assert(
        GLOG_LEVEL_DEBUG, "%s() " f, __FUNCTION__, ##args)
 #    define GDEBUG_DUMP(buf,n)  gutil_log_dump(GLOG_MODULE_CURRENT, \
        GLOG_LEVEL_DEBUG, NULL, buf, n) /* Since 1.0.55 */
+#    define GDEBUG_DUMP_BYTES(b) gutil_log_dump_bytes(GLOG_MODULE_CURRENT, \
+       GLOG_LEVEL_DEBUG, NULL, b) /* Since 1.0.67 */
 #  else
 #    define GDEBUG(f,args...)   GLOG_NOTHING
 #    define GDEBUG_(f,args...)  GLOG_NOTHING
 #    define GDEBUG_DUMP(buf,n)  GLOG_NOTHING /* Since 1.0.55 */
+#    define GDEBUG_DUMP_BYTES(b) GLOG_NOTHING /* Since 1.0.67 */
 #  endif /* GUTIL_LOG_DEBUG */
 #else
 #  define GDEBUG_               GDEBUG

@@ -1,8 +1,8 @@
 /*
- * Copyright (C) 2014-2021 Jolla Ltd.
- * Copyright (C) 2014-2021 Slava Monich <slava.monich@jolla.com>
+ * Copyright (C) 2014-2023 Slava Monich <slava@monich.com>
+ * Copyright (C) 2014-2022 Jolla Ltd.
  *
- * You may use this file under the terms of BSD license as follows:
+ * You may use this file under the terms of the BSD license as follows:
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,10 @@
 
 #include <stdlib.h>
 
+#if __GNUC__ >= 4
+#pragma GCC visibility push(default)
+#endif
+
 #ifdef unix
 #  include <unistd.h>
 #  include <sys/syscall.h>
@@ -58,6 +62,9 @@
 
 /* Allows timestamps in stdout log */
 gboolean gutil_log_timestamp = FALSE;
+static const char gutil_log_ftime_default[] = "%Y-%m-%d %H:%M:%S ";
+static const char* gutil_log_ftime = gutil_log_ftime_default;
+static char* gutil_log_ftime_custom = NULL;
 
 /* Adds thread id prefix */
 gboolean gutil_log_tid = FALSE; /* Since 1.0.51 */
@@ -165,7 +172,8 @@ gutil_log_stdio(
     const char* prefix = "";
     char* msg;
 
-    if (gutil_log_timestamp) {
+    /* gutil_log_ftime is never NULL but can be empty */
+    if (gutil_log_timestamp && gutil_log_ftime[0]) {
         time_t now;
 #ifndef _WIN32
         struct tm tm_;
@@ -173,7 +181,7 @@ gutil_log_stdio(
 #endif
 
         time(&now);
-        strftime(t, sizeof(t), "%Y-%m-%d %H:%M:%S ", localtime(&now));
+        strftime(t, sizeof(t), gutil_log_ftime, localtime(&now));
 #undef localtime
     } else {
         t[0] = 0;
@@ -441,6 +449,7 @@ gutil_log(
     ...)
 {
     va_list va;
+
     va_start(va, format);
     gutil_logv(module, level, format, va);
     va_end(va);
@@ -490,6 +499,29 @@ gutil_log_enabled(
     return FALSE;
 }
 
+static
+void
+gutil_log_dump2(
+    const GLogModule* module,
+    int level,
+    const char* prefix,
+    const void* data,
+    gsize size)
+{
+    const guint8* ptr = data;
+    guint off = 0;
+
+    if (!prefix) prefix = "";
+    while (size > 0) {
+        char buf[GUTIL_HEXDUMP_BUFSIZE];
+        const guint consumed = gutil_hexdump(buf, ptr + off, size);
+
+        gutil_log(module, level, "%s%04X: %s", prefix, off, buf);
+        size -= consumed;
+        off += consumed;
+    }
+}
+
 void
 gutil_log_dump(
     const GLogModule* module,
@@ -499,18 +531,50 @@ gutil_log_dump(
     gsize size) /* Since 1.0.55 */
 {
     if (gutil_log_enabled(module, level)) {
-        const guint8* ptr = data;
-        guint off = 0;
+        gutil_log_dump2(module, level, prefix, data, size);
+    }
+}
 
-        if (!prefix) prefix = "";
-        while (size > 0) {
-            char buf[GUTIL_HEXDUMP_BUFSIZE];
-            const guint consumed = gutil_hexdump(buf, ptr + off, size);
+void
+gutil_log_dump_bytes(
+    const GLogModule* module,
+    int level,
+    const char* prefix,
+    GBytes* bytes) /* Since 1.0.67 */
+{
+    if (G_LIKELY(bytes) && gutil_log_enabled(module, level)) {
+        gsize size = 0;
+        const guint8* data = g_bytes_get_data(bytes, &size);
 
-            gutil_log(module, level, "%s%04X: %s", prefix, off, buf);
-            size -= consumed;
-            off += consumed;
+        gutil_log_dump2(module, level, prefix, data, size);
+    }
+}
+
+/*
+ * Timestamp format only affects the output if gutil_log_timestamp is set
+ * to TRUE (by default it's FALSE). Ans it  only affects stdio logging.
+ *
+ * The default timestamp format is "%Y-%m-%d %H:%M:%S ", see strftime(3)
+ * for details. Note that it includes a separator between the timestamp
+ * and the rest of the message. Passing in an empty string effectively
+ * disables timestamping, NULL restores the default format.
+ */
+void
+gutil_log_set_timestamp_format(
+    const char* f) /* Since 1.0.73 */
+{
+    if (f) {
+        if (g_strcmp0(f, gutil_log_ftime_custom)) {
+            char* old = gutil_log_ftime_custom;
+
+            /* Not sure if the format string should be validated */
+            gutil_log_ftime = gutil_log_ftime_custom = g_strdup(f);
+            g_free(old);
         }
+    } else if (gutil_log_ftime_custom) {
+        g_free(gutil_log_ftime_custom);
+        gutil_log_ftime_custom = NULL;
+        gutil_log_ftime = gutil_log_ftime_default;
     }
 }
 
@@ -524,9 +588,11 @@ gutil_log_parse_level(
     if (str && str[0]) {
         guint i;
         const size_t len = strlen(str);
+
         if (len == 1) {
             const char* valid_numbers = "012345";
             const char* number = strchr(valid_numbers, str[0]);
+
             if (number) {
                 return number - valid_numbers;
             }
@@ -559,9 +625,11 @@ gutil_log_parse_option(
     const char* sep = strchr(opt, ':');
     if (sep) {
         const int modlevel = gutil_log_parse_level(sep+1, error);
+
         if (modlevel >= 0) {
             int i;
             const size_t namelen = sep - opt;
+
             for (i=0; i<count; i++) {
                 if (!g_ascii_strncasecmp(modules[i]->name, opt, namelen) &&
                     strlen(modules[i]->name) == namelen) {
@@ -595,6 +663,7 @@ gutil_log_description(
 {
     int i;
     GString* desc = g_string_sized_new(128);
+
     g_string_append(desc, "Log Levels:\n");
     for (i=0; i<=GLOG_LEVEL_VERBOSE; i++) {
         g_string_append_printf(desc, "   %d, ", i);
@@ -667,7 +736,7 @@ gutil_log_get_type()
 }
 
 /* Initialize defaults from the environment */
-#ifndef _WIN32
+#ifdef __GNUC__
 __attribute__((constructor))
 static
 void
@@ -691,7 +760,15 @@ gutil_log_init()
         GDEBUG("Thread id prefix %s", (val > 0) ? "enabled" : "disabled");
     }
 }
-#endif
+
+__attribute__((destructor))
+static
+void
+gutil_log_deinit()
+{
+    gutil_log_set_timestamp_format(NULL);
+}
+#endif /* __GNUC__ */
 
 /*
  * Local Variables:

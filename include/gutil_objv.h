@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2014-2021 Jolla Ltd.
  * Copyright (C) 2023 Slava Monich <slava@monich.com>
  *
  * You may use this file under the terms of BSD license as follows:
@@ -30,42 +29,105 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GUTIL_TYPES_H
-#define GUTIL_TYPES_H
+#ifndef GUTIL_OBJV_H
+#define GUTIL_OBJV_H
 
-#include <glib.h>
-#include <string.h>
-#include <stdio.h>
+#include "gutil_types.h"
+
+#include <glib-object.h>
+
+/*
+ * Operations on NULL-terminated array of references to GObjects.
+ *
+ * Since 1.0.70
+ */
 
 G_BEGIN_DECLS
 
-typedef char* GStrV;
-typedef struct gutil_idle_pool GUtilIdlePool;
-typedef struct gutil_idle_queue GUtilIdleQueue;
-typedef struct gutil_ints GUtilInts;
-typedef struct gutil_int_array GUtilIntArray;
-typedef struct gutil_int_history GUtilIntHistory;
-typedef struct gutil_inotify_watch GUtilInotifyWatch;
-typedef struct gutil_ring GUtilRing;
-typedef struct gutil_time_notify GUtilTimeNotify;
-typedef struct gutil_weakref GUtilWeakRef; /* Since 1.0.68 */
+GObject**
+gutil_objv_new(
+    GObject* obj,
+    ...) /* Since 1.0.72 */
+    G_GNUC_WARN_UNUSED_RESULT
+    G_GNUC_NULL_TERMINATED;
 
-typedef struct gutil_data {
-    const guint8* bytes;
-    gsize size;
-} GUtilData;
+void
+gutil_objv_free(
+    GObject** objv);
 
-typedef struct gutil_range {
-    const guint8* ptr;
-    const guint8* end;
-} GUtilRange; /* Since 1.0.54 */
+GObject**
+gutil_objv_copy(
+    GObject* const* objv)
+    G_GNUC_WARN_UNUSED_RESULT;
 
-#define GLOG_MODULE_DECL(m) extern GLogModule m;
-typedef struct glog_module GLogModule;
+GObject**
+gutil_objv_add(
+    GObject** objv,
+    GObject* obj)
+    G_GNUC_WARN_UNUSED_RESULT;
+
+GObject**
+gutil_objv_insert(
+    GObject** objv,
+    GObject* obj,
+    gsize pos) /* Since 1.0.71 */
+    G_GNUC_WARN_UNUSED_RESULT;
+
+GObject**
+gutil_objv_append(
+    GObject** objv,
+    GObject* const* objs) /* Since 1.0.71 */
+    G_GNUC_WARN_UNUSED_RESULT;
+
+GObject**
+gutil_objv_remove(
+    GObject** objv,
+    GObject* obj,
+    gboolean all)
+    G_GNUC_WARN_UNUSED_RESULT;
+
+GObject**
+gutil_objv_remove_at(
+    GObject** objv,
+    gsize pos)
+    G_GNUC_WARN_UNUSED_RESULT;
+
+GObject*
+gutil_objv_at(
+    GObject* const* objv,
+    gsize pos);
+
+gboolean
+gutil_objv_equal(
+    GObject* const* objv1,
+    GObject* const* objv2);
+
+GObject*
+gutil_objv_first(
+    GObject* const* objv);
+
+GObject*
+gutil_objv_last(
+    GObject* const* objv);
+
+gssize
+gutil_objv_find(
+    GObject* const* objv,
+    GObject* obj);
+
+gssize
+gutil_objv_find_last(
+    GObject* const* objv,
+    GObject* obj);
+
+gboolean
+gutil_objv_contains(
+    GObject* const* objv,
+    GObject* obj);
 
 G_END_DECLS
 
-#endif /* GUTIL_TYPES_H */
+#endif /* GUTIL_OBJV_H */
 
 /*
  * Local Variables:

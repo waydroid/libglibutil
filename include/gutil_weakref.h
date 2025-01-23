@@ -1,8 +1,7 @@
 /*
- * Copyright (C) 2018-2023 Slava Monich <slava@monich.com>
- * Copyright (C) 2018 Jolla Ltd.
+ * Copyright (C) 2023 Slava Monich <slava@monich.com>
  *
- * You may use this file under the terms of the BSD license as follows:
+ * You may use this file under the terms of BSD license as follows:
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,45 +29,51 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "test_common.h"
+#ifndef GUTIL_WEAKREF_H
+#define GUTIL_WEAKREF_H
 
-#include <gutil_log.h>
+#include "gutil_types.h"
 
-typedef GObject TestObject;
-typedef GObjectClass TestObjectClass;
+/*
+ * Ref-countable weak reference can be used to avoid calling g_weak_ref_set()
+ * too often because it grabs global weak_locations_lock for exclusive access.
+ * Note that g_weak_ref_set() is also invoked internally by g_weak_ref_init()
+ * and g_weak_ref_clear().
+ *
+ * g_weak_ref_get() on the other hand only acquires weak_locations_lock
+ * for read-only access which is less of a bottleneck in a multi-threaded
+ * environment. And it's generally significantly simpler and faster than
+ * g_weak_ref_set().
+ *
+ * Since 1.0.68
+ */
 
-G_DEFINE_TYPE(TestObject, test_object, G_TYPE_OBJECT)
+G_BEGIN_DECLS
 
-gint test_object_count = 0;
+GUtilWeakRef*
+gutil_weakref_new(
+    gpointer obj);
 
-static
+GUtilWeakRef*
+gutil_weakref_ref(
+    GUtilWeakRef* ref);
+
 void
-test_object_init(
-    TestObject* self)
-{
-    g_atomic_int_inc(&test_object_count);
-}
+gutil_weakref_unref(
+    GUtilWeakRef* ref);
 
-#ifdef __clang__
-__attribute__((no_sanitize("cfi")))
-#endif
-static
-void
-test_object_finalize(
-    GObject* object)
-{
-    GASSERT(test_object_count > 0);
-    g_atomic_int_add(&test_object_count, -1);
-    G_OBJECT_CLASS(test_object_parent_class)->finalize(object);
-}
+gpointer
+gutil_weakref_get(
+    GUtilWeakRef* ref);
 
-static
 void
-test_object_class_init(
-    TestObjectClass* klass)
-{
-    klass->finalize = test_object_finalize;
-}
+gutil_weakref_set(
+    GUtilWeakRef* ref,
+    gpointer obj);
+
+G_END_DECLS
+
+#endif /* GUTIL_WEAKREF_H */
 
 /*
  * Local Variables:

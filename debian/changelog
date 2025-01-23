@@ -1,3 +1,100 @@
+libglibutil (1.0.79) unstable; urgency=low
+
+  * Exported gutil_source_remove() and Added gutil_source_clear()
+
+ -- Slava Monich <slava@monich.com>  Thu, 02 May 2024 17:40:30 +0300
+
+libglibutil (1.0.78) unstable; urgency=low
+
+  * Added gutil_source_remove()
+  * Added gutil_source_clear()
+
+ -- Slava Monich <slava@monich.com>  Thu, 02 May 2024 04:43:18 +0300
+
+libglibutil (1.0.77) unstable; urgency=low
+
+  * Eliminate defects found by Coverity
+
+ -- Slava Monich <slava@monich.com>  Wed, 10 Apr 2024 04:13:16 +0300
+
+libglibutil (1.0.76) unstable; urgency=low
+
+  * Added gutil_idle_pool_get_default()
+  * Return the value pushed to the idle pool
+  * Interpret NULL as the default pool when appropriate
+
+ -- Slava Monich <slava@monich.com>  Sun, 28 Jan 2024 02:36:16 +0200
+
+libglibutil (1.0.75) unstable; urgency=low
+
+  * Cross-compilation tweaks
+  * Compatibility with clang -fsanitize=cfi
+  * Export all and only required symbols
+
+ -- Slava Monich <slava@monich.com>  Fri, 01 Dec 2023 02:01:34 +0200
+
+libglibutil (1.0.74) unstable; urgency=low
+
+  * Added Added gutil_data_copy_as_variant()
+
+ -- Slava Monich <slava@monich.com>  Sun, 10 Sep 2023 04:11:17 +0300
+
+libglibutil (1.0.73) unstable; urgency=low
+
+  * Define and use MAKE var instead of explicitly calling make
+  * Added gutil_log_set_timestamp_format()
+
+ -- Slava Monich <slava@monich.com>  Tue, 05 Sep 2023 15:53:55 +0300
+
+libglibutil (1.0.72) unstable; urgency=low
+
+  * Don't export gutil_time_notify_get_type()
+  * Added gutil_data_new()
+  * Added gutil_data_copy()
+  * Added gutil_objv_new()
+
+ -- Slava Monich <slava@monich.com>  Sun, 20 Aug 2023 02:05:13 +0300
+
+libglibutil (1.0.71) unstable; urgency=low
+
+  * Added gutil_object_ref()
+  * Added gutil_object_unref()
+  * Added gutil_objv_append()
+  * Added gutil_objv_insert()
+  * Added gutil_ptrv_is_empty()
+  * Added gutil_bin2hex()
+  * Added gutil_data2hex()
+
+ -- Slava Monich <slava@monich.com>  Sun, 18 Jun 2023 14:24:13 +0300
+
+libglibutil (1.0.70) unstable; urgency=low
+
+  * Added gutil_objv module
+
+ -- Slava Monich <slava@monich.com>  Mon, 29 May 2023 01:35:08 +0300
+
+libglibutil (1.0.69) unstable; urgency=low
+
+  * Runtime and compile time version detection
+  * Added gutil_datapack module
+  * Require glib 2.32
+
+ -- Slava Monich <slava@monich.com>  Thu, 06 Apr 2023 02:13:48 +0300
+
+libglibutil (1.0.68) unstable; urgency=low
+
+  * Added gutil_weakref module
+  * Fixed a few compilation warnings
+  * Packaging tweaks
+
+ -- Slava Monich <slava@monich.com>  Sat, 04 Feb 2023 04:26:45 +0200
+
+libglibutil (1.0.67) unstable; urgency=low
+
+  * Added gutil_log_dump_bytes()
+
+ -- Slava Monich <slava.monich@jolla.com>  Fri, 15 Jul 2022 03:02:33 +0300
+
 libglibutil (1.0.66) unstable; urgency=low
 
   * Bumped debhelper compat level to 7
